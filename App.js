@@ -1,7 +1,6 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider, MD3LightTheme as DefaultTheme } from 'react-native-paper';
 import { Text } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
@@ -11,6 +10,8 @@ import Dashboard from './App/Dashboard';
 import Animales from './App/Animales';
 import Alertas from './App/Alertas';
 import Ajustes from './App/Ajustes';
+import Registrar from './App/login/Registrar';
+import Login from './App/login/login';
 
 // Configuración del tema
 const theme = {
@@ -103,8 +104,10 @@ export default function App() {
   return (
     <PaperProvider theme={theme}>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="MainTabs" component={TabNavigator} />
+          <Stack.Screen name="Registrar" component={Registrar} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

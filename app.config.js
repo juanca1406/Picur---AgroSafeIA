@@ -1,4 +1,5 @@
-{
+import 'dotenv/config';
+export default {
   "expo": {
     "name": "AgroSafeIA",
     "slug": "AgroSafeIA",
@@ -27,9 +28,15 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "eas": {
-        "projectId": "d3cc2f15-d022-45bc-a958-06035580ceef"
-      }
+      apiKey: process.env.API_KEY,
+      authDomain: process.env.AUTH_DOMAIN,
+      projectId: process.env.PROJECT_ID,
+      storageBucket: process.env.STORAGE_BUCKET,
+      messagingSenderId: process.env.MESSAGING_SENDER_ID,
+      appId: process.env.APP_ID
+    },
+    "eas": {
+      "projectId": "d3cc2f15-d022-45bc-a958-06035580ceef"
     }
   }
 }
