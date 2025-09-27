@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     View,
     StyleSheet,
@@ -21,40 +21,9 @@ export default function Login({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [secureTextEntry, setSecureTextEntry] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({});
+    const [loading,] = useState(false);
+    const [errors,] = useState({});
     const theme = useTheme();
-
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!email) {
-            newErrors.email = 'El email es requerido';
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            newErrors.email = 'Email inválido';
-        }
-
-        if (!password) {
-            newErrors.password = 'La contraseña es requerida';
-        } else if (password.length < 6) {
-            newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleLogin = () => {
-        if (validateForm()) {
-            setLoading(true);
-            // Simular llamada a API
-            setTimeout(() => {
-                setLoading(false);
-                console.log('Login exitoso', { email, password });
-                // navigation.navigate('Home');
-            }, 2000);
-        }
-    };
 
     const toggleSecureEntry = () => {
         setSecureTextEntry(!secureTextEntry);
@@ -144,12 +113,12 @@ export default function Login({ navigation }) {
                             {/* Botón de login */}
                             <Button
                                 mode="contained"
-                                onPress={handleLogin}
                                 loading={loading}
                                 disabled={loading}
                                 style={styles.loginButton}
                                 icon="login"
                                 contentStyle={styles.buttonContent}
+                                onPress={() => navigation.navigate('MainTabs', { screen: 'dashboard' })}
                             >
                                 {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
                             </Button>
