@@ -17,6 +17,8 @@ import {
     useTheme,
     Checkbox,
 } from 'react-native-paper';
+import { database } from '../config/fb';
+import { collection, addDoc } from 'firebase/firestore';
 
 export default function Registrar({ navigation }) {
     const [formData, setFormData] = useState({
@@ -26,8 +28,7 @@ export default function Registrar({ navigation }) {
         telefono: '',
         password: '',
         confirmPassword: '',
-        empresa: '',
-        cargo: ''
+        fechaCreacion: new Date()
     });
     const [secureTextEntry, setSecureTextEntry] = useState(true);
     const [confirmSecureTextEntry, setConfirmSecureTextEntry] = useState(true);
@@ -104,14 +105,14 @@ export default function Registrar({ navigation }) {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         if (validateForm()) {
             setLoading(true);
-            // Simular registro
-            setTimeout(() => {
+            setTimeout(async () => {
                 setLoading(false);
+                await addDoc(collection(database, 'usuarios'), formData);
                 console.log('Registro exitoso', formData);
-                // navigation.navigate('Login');
+                navigation.goBack();
             }, 2000);
         }
     };
@@ -290,10 +291,10 @@ export default function Registrar({ navigation }) {
                                 </HelperText>
                             </View>
 
-                            {/* Términos y condiciones */}
+                            {/* Términos y condiciones - VERSIÓN CORREGIDA */}
                             <View style={styles.termsContainer}>
                                 <View style={styles.checkboxContainer}>
-                                    <Checkbox.Android
+                                    <Checkbox
                                         status={acceptTerms ? 'checked' : 'unchecked'}
                                         onPress={() => setAcceptTerms(!acceptTerms)}
                                         color={theme.colors.primary}
@@ -355,7 +356,7 @@ export default function Registrar({ navigation }) {
             </KeyboardAvoidingView>
         </>
     );
-};
+}
 
 const styles = StyleSheet.create({
     container: {
