@@ -1,10 +1,9 @@
-import React from 'react';
 import { View, ScrollView } from 'react-native';
 import { Appbar, FAB } from 'react-native-paper';
 import { ANIMALES } from './data/mockData';
 import AnimalItem from './components/AnimalItem';
 
-const Animales = () => {
+const Animales = ({ navigation }) => {
     return (
         <View style={{ flex: 1 }}>
             <Appbar.Header mode="center-aligned">
@@ -27,7 +26,7 @@ const Animales = () => {
                     right: 16,
                     bottom: 16,
                 }}
-                onPress={() => { }}
+                onPress={() => navigation.navigate('createAnimal')}
             />
         </View>
     );

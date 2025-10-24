@@ -32,7 +32,7 @@ export const ALERTAS = [
     {
         id: "AL-101",
         tipo: "golpe_calor",
-        animal: "Vaca #14",
+        animal: "Vaca #142",
         hace: "hace 12 min",
         valor: "Temp 40.2 °C",
         nivel: "Alta",

@@ -8,6 +8,7 @@ import { FontAwesome } from '@expo/vector-icons';
 // Importar pantallas
 import Dashboard from './App/Dashboard';
 import Animales from './App/Animales';
+import createAnimal from './App/Create_animal';
 import Alertas from './App/Alertas';
 import Ajustes from './App/Ajustes';
 import Registrar from './App/login/Registrar';
@@ -108,6 +109,7 @@ export default function App() {
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="Registrar" component={Registrar} />
+          <Stack.Screen name="createAnimal" component={createAnimal} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

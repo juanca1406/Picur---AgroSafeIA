@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getDatabase, ref, onValue } from "firebase/database";
 import Constants from 'expo-constants';
 
 // Your web app's Firebase configuration
@@ -12,9 +12,11 @@ const firebaseConfig = {
     messagingSenderId: Constants.expoConfig.extra.messagingSenderId,
     appId: Constants.expoConfig.extra.appId,
 };
-
-// Initialize Firebase
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore and get a reference to the service
-export const database = getFirestore(app);
+// Inicializar Realtime Database
+export const db = getDatabase(app);
+
+// Exportar helpers
+export { ref, onValue };
