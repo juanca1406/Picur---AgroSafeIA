@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Linking, Alert } from 'react-native';
 import { Card, Text, Button, Avatar, Badge } from 'react-native-paper';
 import { db, ref, onValue } from "../config/fb";
 
@@ -8,6 +8,70 @@ const AlertaCard = ({ alerta }) => {
     const { outline } = nivelToTone(alerta.nivel);
     const [temp, setTemp] = useState(null);
     const [hum, setHum] = useState(null);
+    const [confirmado, setConfirmado] = useState(false);
+    const [confirmacionId, setConfirmacionId] = useState(null);
+
+    const confirmarAlerta = async () => {
+        try {
+            const confirmacionData = {
+                alertaId: alerta.id,
+                tipo: alerta.tipo,
+                animal: alerta.animal,
+                nivel: alerta.nivel,
+                confirmado: true,
+                fechaConfirmacion: new Date().toISOString(),
+                temperatura: temp,
+                humedad: hum,
+                ubicacion: alerta.ubicacion || 'Ubicación no especificada',
+                accionTomada: 'Revisado y confirmado', // Puedes personalizar esto
+                usuario: 'Usuario Actual' // Puedes reemplazar con auth del usuario
+            };
+
+            // Crear nueva confirmación en Firebase
+            const nuevaConfirmacionRef = push(ref(db, 'confirmaciones'));
+            await set(nuevaConfirmacionRef, confirmacionData);
+
+            setConfirmado(true);
+            setConfirmacionId(nuevaConfirmacionRef.key);
+
+            Alert.alert('✅ Confirmado', 'La alerta ha sido registrada en el historial');
+        } catch (error) {
+            Alert.alert('❌ Error', 'No se pudo confirmar la alerta');
+            console.error('Error confirmando alerta:', error);
+        }
+    };
+
+    const handleConfirmarPress = () => {
+        if (confirmado) {
+            Alert.alert(
+                'Desconfirmar Alerta',
+                '¿Estás seguro de que quieres eliminar esta confirmación?',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Desconfirmar', onPress: desconfirmarAlerta, style: 'destructive' }
+                ]
+            );
+        } else {
+            Alert.alert(
+                'Confirmar Alerta',
+                `¿Confirmar que has revisado la alerta de ${ui.label} para ${alerta.animal}?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Confirmar', onPress: confirmarAlerta }
+                ]
+            );
+        }
+    };
+
+    const makeCall = () => {
+        const phoneNumber = '+583184620843'; // Número de teléfono
+
+        Linking.openURL(`tel:${phoneNumber}`)
+            .catch(err => {
+                Alert.alert('Error', 'No se pudo realizar la llamada');
+                console.error('Error al hacer la llamada:', err);
+            });
+    };
 
     useEffect(() => {
         // Escucha el nodo padre una sola vez y saca ambos valores
@@ -89,9 +153,19 @@ const AlertaCard = ({ alerta }) => {
                 }
             </Card.Content>
             <Card.Actions>
-                <Button icon="phone" mode="text">Llamar</Button>
-                <Button icon="bell-check" mode="text">Confirmar</Button>
-                <Button icon="directions" mode="contained-tonal">Ruta</Button>
+                <Button onPress={makeCall} icon="phone" mode="contained">
+                    Llamar
+                </Button>
+                <Button
+                    onPress={handleConfirmarPress}
+                    icon={confirmado ? "check-circle" : "bell-check"}
+                    mode={confirmado ? "contained" : "outlined"}
+                    buttonColor={confirmado ? '#10B981' : undefined}
+                    textColor={confirmado ? 'white' : undefined}
+                    style={{ flex: 1 }}
+                >
+                    {confirmado ? 'Confirmado' : 'Confirmar'}
+                </Button>
             </Card.Actions>
 
 
