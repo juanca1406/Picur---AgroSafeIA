@@ -9,8 +9,8 @@
 #define WIFI_PASSWORD "cazuelas8788"
 
 // --- Firebase ---
-#define API_KEY "AIzaSyAsfD9cXatve2gWgcF3bzGtJNOmoYmxFuw"
-#define DATABASE_URL "https://agrosafeia-default-rtdb.firebaseio.com"
+#define API_KEY ""
+#define DATABASE_URL ""
 
 // --- Sensores ---
 #define DHTPIN 4
