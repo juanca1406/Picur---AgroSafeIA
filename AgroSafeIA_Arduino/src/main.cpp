@@ -1,52 +1,63 @@
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
-#include "DHT.h"
 #include <Wire.h>
-#include <MPU6050.h>
+#include "DHT.h"
+#include <MAX30105.h>  // SparkFun MAX3010x library
+#include "heartRate.h" // coloca este archivo en lib/HeartAlgo/heartRate.h
 
 // --- WiFi ---
 #define WIFI_SSID "CAZUELAS"
 #define WIFI_PASSWORD "cazuelas8788"
 
 // --- Firebase ---
-#define API_KEY ""
-#define DATABASE_URL ""
+#define API_KEY "AIzaSyAsfD9cXatve2gWgcF3bzGtJNOmoYmxFuw"
+#define DATABASE_URL "https://agrosafeia-default-rtdb.firebaseio.com"
 
-// --- Sensores ---
+// ================== DHT22 ===================
 #define DHTPIN 4
 #define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
 
-MPU6050 mpu;
-
-// --- Objetos Firebase ---
+// ======= Firebase objs (no tocar) ===========
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-// Variables MPU6050
-int16_t ax, ay, az;
-int16_t gx, gy, gz;
+// ============== MAX30102 ====================
+MAX30105 particleSensor;
 
-// Estados para posición
-enum EstadoPosicion
+// Parámetros de muestreo / suavizado
+const uint8_t BPM_AVG = 4; // promedio móvil de 4 latidos válidos
+float bpmAvgBuf[BPM_AVG] = {0};
+uint8_t bpmIdx = 0;
+bool bpmBufFilled = false;
+
+// Control de envío
+unsigned long lastSendMs = 0;
+const unsigned long SEND_EVERY_MS = 5000; // cada 5 s
+
+// Rango válido de BPM para descartar picos raros
+const float BPM_MIN = 40.0;
+const float BPM_MAX = 180.0;
+
+// Helper: promedio seguro
+float movingAvg(float v)
 {
-  PARADO,
-  CAIDO,
-  INCIERTO
-};
+  bpmAvgBuf[bpmIdx++] = v;
+  if (bpmIdx >= BPM_AVG)
+  {
+    bpmIdx = 0;
+    bpmBufFilled = true;
+  }
+  uint8_t n = bpmBufFilled ? BPM_AVG : bpmIdx;
+  float acc = 0.0;
+  for (uint8_t i = 0; i < n; i++)
+    acc += bpmAvgBuf[i];
+  return (n > 0) ? acc / n : v;
+}
 
-EstadoPosicion estadoActual = INCIERTO;
-
-// Umbrales para detección de posición
-const int UMBRAL_PARADO = 15000;
-const int UMBRAL_CAIDO = 5000;
-
-void setup()
+void connectWiFi()
 {
-  Serial.begin(115200);
-
-  // Inicializar WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Conectando WiFi");
   while (WiFi.status() != WL_CONNECTED)
@@ -54,178 +65,161 @@ void setup()
     Serial.print(".");
     delay(500);
   }
-  Serial.println("\n✅ Conectado a WiFi");
+  Serial.printf("\n✅ WiFi OK: %s | IP: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+}
 
-  // Configurar Firebase
+bool initFirebase()
+{
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
+
+  // Anónimo (email/clave vacíos)
   if (!Firebase.signUp(&config, &auth, "", ""))
   {
-    Serial.printf("Error de signup: %s\n", config.signer.signupError.message.c_str());
+    Serial.printf("❌ Error signup: %s\n", config.signer.signupError.message.c_str());
+    // Podemos seguir: RTDB no exige UID para escribir si reglas lo permiten
   }
+
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+  Serial.println("✅ Firebase OK");
+  return true;
+}
 
-  // Iniciar sensores
+bool initMAX30102()
+{
+  Wire.begin(21, 22); // SDA, SCL
+  if (!particleSensor.begin(Wire, I2C_SPEED_FAST))
+  {
+    Serial.println("❌ No se encontró MAX3010x. Revisa conexiones.");
+    return false;
+  }
+
+  // Config “suave” recomendada para pulso
+  byte ledBrightness = 60; // 0–255
+  byte sampleAverage = 4;  // promedio HW
+  byte ledMode = 2;        // rojo + IR
+  int sampleRate = 100;    // Hz
+  int pulseWidth = 411;    // mayor profundidad
+  int adcRange = 16384;    // rango ADC
+
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
+  particleSensor.setFIFOAverage(sampleAverage); // opcional, refuerza promedio
+
+  // Ajuste de corriente si satura o es muy bajo (opcional)
+  // particleSensor.setPulseAmplitudeRed(0x24); // ~7.6mA
+  // particleSensor.setPulseAmplitudeIR(0x24);
+
+  Serial.println("✅ MAX30102 OK");
+  return true;
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  delay(200);
+
+  connectWiFi();
+  initFirebase();
+
   dht.begin();
-  Serial.println("✅ Sensor DHT22 inicializado");
+  delay(1000);
 
-  // Inicializar MPU6050
-  Wire.begin();
-  mpu.initialize();
-
-  // Verificar conexión MPU6050
-  if (mpu.testConnection())
-  {
-    Serial.println("✅ MPU6050 conectado correctamente");
-  }
-  else
-  {
-    Serial.println("❌ Error al conectar MPU6050");
-    Serial.println("Verifica las conexiones:");
-    Serial.println("VCC -> 3.3V");
-    Serial.println("GND -> GND");
-    Serial.println("SCL -> GPIO 22");
-    Serial.println("SDA -> GPIO 21");
-  }
-
-  delay(2000);
-  Serial.println("Sistema iniciado - Enviando datos a Firebase...");
-}
-
-EstadoPosicion determinarPosicion()
-{
-  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-
-  int abs_az = abs(az);
-
-  Serial.print("📊 MPU6050 - X:");
-  Serial.print(ax);
-  Serial.print(" Y:");
-  Serial.print(ay);
-  Serial.print(" Z:");
-  Serial.print(az);
-  Serial.print(" | GX:");
-  Serial.print(gx);
-  Serial.print(" GY:");
-  Serial.print(gy);
-  Serial.print(" GZ:");
-  Serial.print(gz);
-  Serial.print(" | Abs Z:");
-  Serial.print(abs_az);
-  Serial.print(" | ");
-
-  if (abs_az > UMBRAL_PARADO)
-  {
-    Serial.println("PARADO ✓");
-    return PARADO;
-  }
-  else if (abs_az < UMBRAL_CAIDO)
-  {
-    Serial.println("CAÍDO ✗");
-    return CAIDO;
-  }
-  else
-  {
-    Serial.println("INCIERTO ?");
-    return INCIERTO;
-  }
-}
-
-String obtenerTextoEstado(EstadoPosicion estado)
-{
-  switch (estado)
-  {
-  case PARADO:
-    return "Parado";
-  case CAIDO:
-    return "Caido";
-  case INCIERTO:
-    return "Incierto";
-  default:
-    return "Desconocido";
-  }
-}
-
-void enviarDatosFirebase(float temperatura, float humedad, EstadoPosicion estado)
-{
-  // Enviar datos del DHT22
-  bool okT = Firebase.RTDB.setFloat(&fbdo, "/Sensores/DHT22/Temperatura", temperatura);
-  bool okH = Firebase.RTDB.setFloat(&fbdo, "/Sensores/DHT22/Humedad", humedad);
-
-  // Enviar datos del MPU6050
-  bool okAx = Firebase.RTDB.setInt(&fbdo, "/Sensores/MPU6050/AceleracionX", ax);
-  bool okAy = Firebase.RTDB.setInt(&fbdo, "/Sensores/MPU6050/AceleracionY", ay);
-  bool okAz = Firebase.RTDB.setInt(&fbdo, "/Sensores/MPU6050/AceleracionZ", az);
-  bool okGx = Firebase.RTDB.setInt(&fbdo, "/Sensores/MPU6050/GiroscopioX", gx);
-  bool okGy = Firebase.RTDB.setInt(&fbdo, "/Sensores/MPU6050/GiroscopioY", gy);
-  bool okGz = Firebase.RTDB.setInt(&fbdo, "/Sensores/MPU6050/GiroscopioZ", gz);
-  bool okEstado = Firebase.RTDB.setString(&fbdo, "/Sensores/MPU6050/Estado", obtenerTextoEstado(estado));
-
-  // Enviar timestamp
-  bool okTime = Firebase.RTDB.setInt(&fbdo, "/Sensores/Timestamp", millis());
-
-  if (okT && okH && okEstado)
-  {
-    Serial.println("✅ Todos los datos enviados correctamente a Firebase");
-  }
-  else
-  {
-    Serial.println("❌ Error enviando datos a Firebase:");
-    if (!okT)
-      Serial.println("  - Error en Temperatura");
-    if (!okH)
-      Serial.println("  - Error en Humedad");
-    if (!okEstado)
-      Serial.println("  - Error en Estado MPU6050");
-    Serial.println(fbdo.errorReason());
-  }
+  initMAX30102();
+  Serial.println("Iniciando lecturas...");
 }
 
 void loop()
 {
-  // Leer sensor DHT22
+  // ---- DHT22 ----
   float temp = dht.readTemperature();
   float hum = dht.readHumidity();
 
-  // Leer sensor MPU6050 y determinar posición
-  EstadoPosicion estadoMPU = determinarPosicion();
+  // ---- MAX30102 ----
+  // Leer FIFO interno
+  particleSensor.check(); // llena el buffer interno de la lib
 
-  if (isnan(temp) || isnan(hum))
+  long irValue = particleSensor.getIR();
+  long redValue = particleSensor.getRed();
+
+  static uint32_t lastBeatMs = 0;
+  float bpmNow = NAN;
+
+  // Detección de latido usando algoritmo de SparkFun (heartRate.h)
+  if (checkForBeat(irValue))
   {
-    Serial.println("⚠️ Error al leer el DHT22");
+    uint32_t now = millis();
+    uint32_t delta = now - lastBeatMs;
+    lastBeatMs = now;
 
-    // Enviar solo datos del MPU6050 si hay error en DHT22
-    enviarDatosFirebase(0, 0, estadoMPU);
-  }
-  else
-  {
-    Serial.printf("🌡 %.1f °C | 💧 %.1f %%\n", temp, hum);
-
-    // Enviar todos los datos a Firebase
-    enviarDatosFirebase(temp, hum, estadoMPU);
-
-    // Solo mostrar cambio de estado destacado
-    if (estadoMPU != estadoActual)
+    if (delta > 0)
     {
-      estadoActual = estadoMPU;
-      Serial.println("****************************************");
-      switch (estadoActual)
+      float bpm = 60.0 * 1000.0 / (float)delta;
+      // Filtro de rango
+      if (bpm >= BPM_MIN && bpm <= BPM_MAX)
       {
-      case PARADO:
-        Serial.println("*** 🔥 OBJETO PARADO - Posición correcta ***");
-        break;
-      case CAIDO:
-        Serial.println("*** 🚨 ALERTA: OBJETO CAÍDO! ***");
-        break;
-      case INCIERTO:
-        Serial.println("*** ⚠️  Estado incierto ***");
-        break;
+        bpmNow = movingAvg(bpm);
       }
-      Serial.println("****************************************");
     }
   }
 
-  Serial.println(); // Línea en blanco para separar lecturas
-  delay(5000);
+  // ---- Logs seriales amigables ----
+  if (!isnan(temp) && !isnan(hum))
+  {
+    Serial.printf("🌡 %.1f °C | 💧 %.1f %% | ", temp, hum);
+  }
+  else
+  {
+    Serial.print("🌡/💧 DHT22 err | ");
+  }
+
+  if (irValue < 5000)
+  {
+    // IR muy bajo suele indicar que no hay dedo o mala colocación
+    Serial.println("MAX30102: coloca el dedo (IR bajo)");
+  }
+  else
+  {
+    if (!isnan(bpmNow))
+    {
+      Serial.printf("❤️ BPM ~ %.1f | IR=%ld | RED=%ld\n", bpmNow, irValue, redValue);
+    }
+    else
+    {
+      Serial.printf("❤️ detectando... | IR=%ld | RED=%ld\n", irValue, redValue);
+    }
+  }
+
+  // ---- Envío a Firebase cada 5 s ----
+  if (millis() - lastSendMs >= SEND_EVERY_MS)
+  {
+    lastSendMs = millis();
+
+    // Rutas RTDB
+    // /Sensores/DHT22/{Temperatura,Humedad}
+    // /Sensores/MAX30102/{IR,RED,BPM}
+    if (!isnan(temp))
+      Firebase.RTDB.setFloat(&fbdo, "/Sensores/DHT22/Temperatura", temp);
+    if (!isnan(hum))
+      Firebase.RTDB.setFloat(&fbdo, "/Sensores/DHT22/Humedad", hum);
+
+    Firebase.RTDB.setInt(&fbdo, "/Sensores/MAX30102/IR", (int)irValue);
+    Firebase.RTDB.setInt(&fbdo, "/Sensores/MAX30102/RED", (int)redValue);
+
+    if (!isnan(bpmNow))
+    {
+      Firebase.RTDB.setFloat(&fbdo, "/Sensores/MAX30102/BPM", bpmNow);
+    }
+
+    if (fbdo.httpCode() > 0 && fbdo.errorReason() == "")
+    {
+      Serial.println("✅ Firebase: envío OK");
+    }
+    else
+    {
+      Serial.printf("⚠️ Firebase: %s\n", fbdo.errorReason().c_str());
+    }
+  }
+
+  delay(20); // ~1000/50 = 50 Hz de loop; la lib ya muestrea a 100Hz internamente
 }

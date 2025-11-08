@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue } from "firebase/database";
+import { getDatabase, ref, onValue, off, query, orderByKey, limitToLast, push, set } from "firebase/database";
 import Constants from 'expo-constants';
 
 // Your web app's Firebase configuration
@@ -19,4 +19,4 @@ const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
 
 // Exportar helpers
-export { ref, onValue };
+export { ref, onValue, off, query, orderByKey, limitToLast, push, set };
