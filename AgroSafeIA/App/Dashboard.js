@@ -16,8 +16,6 @@ const Dashboard = () => {
         <>
             <Appbar.Header mode="center-aligned">
                 <Appbar.Content title="AgroSafeIA" subtitle="Monitoreo en tiempo real" />
-                <Appbar.Action icon="bell" onPress={() => { }} />
-                <Appbar.Action icon="dots-vertical" onPress={() => { }} />
             </Appbar.Header>
             <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
                 <Card mode="contained" style={{ marginBottom: 16 }}>
@@ -30,9 +28,6 @@ const Dashboard = () => {
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                             <ResumenChip icon="cow" label="Animales" value={total} />
                             <ResumenChip icon="alert-decagram" label="Alertas" value={activas} />
-                            <ResumenChip icon="alert" label="Alta" value={altas} />
-                            <ResumenChip icon="alert-circle" label="Media" value={medias} />
-                            <ResumenChip icon="alert-outline" label="Baja" value={bajas} />
                         </View>
                     </Card.Content>
                 </Card>

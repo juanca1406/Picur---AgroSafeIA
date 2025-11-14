@@ -8,8 +8,6 @@ const Animales = ({ navigation }) => {
         <View style={{ flex: 1 }}>
             <Appbar.Header mode="center-aligned">
                 <Appbar.Content title="Animales" />
-                <Appbar.Action icon="magnify" onPress={() => { }} />
-                <Appbar.Action icon="filter-variant" onPress={() => { }} />
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>

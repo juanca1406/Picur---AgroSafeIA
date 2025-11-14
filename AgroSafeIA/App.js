@@ -9,10 +9,10 @@ import { FontAwesome } from '@expo/vector-icons';
 import Dashboard from './App/Dashboard';
 import Animales from './App/Animales';
 import createAnimal from './App/Create_animal';
-import Alertas from './App/Alertas';
 import Ajustes from './App/Ajustes';
 import Registrar from './App/login/Registrar';
 import Login from './App/login/login';
+import HistorialScreen from './App/components/HistorialScreen'
 
 // Configuración del tema
 const theme = {
@@ -70,20 +70,6 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Alertas"
-        component={Alertas}
-        options={{
-          tabBarLabel: ({ color }) => (
-            <Text style={{ color: color, fontSize: 12, marginBottom: 3 }}>
-              Alertas
-            </Text>
-          ),
-          tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="bell" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Ajustes"
         component={Ajustes}
         options={{
@@ -110,6 +96,7 @@ export default function App() {
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="Registrar" component={Registrar} />
           <Stack.Screen name="createAnimal" component={createAnimal} />
+          <Stack.Screen name="historial" component={HistorialScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

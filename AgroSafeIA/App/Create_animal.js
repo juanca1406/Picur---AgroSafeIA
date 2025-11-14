@@ -112,12 +112,12 @@ const CrearAnimal = ({ navigation }) => {
                     />
 
                     <TextInput
-                        label="Ubicación"
-                        value={form.ubicacion}
-                        onChangeText={(text) => setForm({ ...form, ubicacion: text })}
+                        label="ID:"
+                        value={form.peso}
+                        onChangeText={(text) => setForm({ ...form, peso: text })}
                         style={styles.input}
                         mode="outlined"
-                        placeholder="Ej: Corral A, Establo B"
+                        keyboardType="numeric"
                     />
 
                     <Button
@@ -138,6 +138,7 @@ const CrearAnimal = ({ navigation }) => {
 const styles = StyleSheet.create({
     contenedor: {
         flex: 1,
+        marginTop: 80,
         padding: 16,
         backgroundColor: '#f5f5f5'
     },
