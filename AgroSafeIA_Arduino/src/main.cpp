@@ -17,8 +17,8 @@
 #define WIFI_SSID "CAZUELAS"
 #define WIFI_PASSWORD "cazuelas8788"
 
-#define API_KEY "AIzaSyAsfD9cXatve2gWgcF3bzGtJNOmoYmxFuw"
-#define DATABASE_URL "https://agrosafeia-default-rtdb.firebaseio.com"
+#define API_KEY ""
+#define DATABASE_URL ""
 
 // ======= RUTA BASE =======
 const char *DEVICE_PATH = "/Dispositivos/ESP32_01/Sensores";
